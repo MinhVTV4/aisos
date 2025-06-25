@@ -16,67 +16,74 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- NOTE: Lucide Icons script moved to the end of the body for better loading order -->
-
     <style>
         body {
             font-family: 'Inter', sans-serif;
             overflow: hidden; /* Prevent scrollbars from main layout */
         }
-        /* Custom Leaflet popup style */
+        /* THEME-LIGHT: Custom Leaflet popup style */
         .leaflet-popup-content-wrapper {
-            background: #2d3748; /* bg-gray-800 */
-            color: #e2e8f0; /* text-gray-300 */
+            background: #ffffff;
+            color: #374151; /* text-gray-700 */
             border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.1);
         }
         .leaflet-popup-content {
             margin: 14px 20px;
         }
         .leaflet-popup-tip {
-            background: #2d3748;
+            background: #ffffff;
         }
         .leaflet-container a.leaflet-popup-close-button {
-            color: #e2e8f0;
+            color: #374151;
         }
-         /* Custom scrollbar */
+         /* THEME-LIGHT: Custom scrollbar */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #2d3748; /* bg-gray-800 */
+            background: #f1f5f9; /* bg-slate-100 */
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #4a5568; /* bg-gray-600 */
+            background: #cbd5e1; /* bg-slate-300 */
             border-radius: 3px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #718096; /* bg-gray-500 */
+            background: #94a3b8; /* bg-slate-400 */
         }
+
+        /* Icon Animation Styles (unchanged) */
+        @keyframes pulse-fire { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+        @keyframes pulse-noise { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+        .marker-pin-fire, .marker-pin-noise { width: 30px; height: 30px; border-radius: 50% 50% 50% 0; position: absolute; transform: rotate(-45deg); left: 50%; top: 50%; margin: -15px 0 0 -15px; }
+        .marker-pin-fire { background-color: #dc2626; animation: pulse-fire 2s infinite; } /* red-600 */
+        .marker-pin-noise { background-color: #eab308; animation: pulse-noise 2s infinite; } /* yellow-500 */
+        .custom-div-icon i { position: absolute; left: 6px; top: 5px; color: white; }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200">
+<body class="bg-gray-100 text-gray-800">
 
     <div class="flex h-screen">
         <!-- Left Panel: Dashboard -->
-        <div class="w-1/3 lg:w-1/4 bg-gray-800 p-4 flex flex-col shadow-lg z-10">
+        <div class="w-1/3 lg:w-1/4 bg-white p-4 flex flex-col shadow-lg z-10 border-r border-gray-200">
             <div class="flex items-center mb-6">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                <h1 class="text-xl font-bold ml-3">Bảng điều khiển Giám sát</h1>
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <h1 class="text-xl font-bold ml-3 text-gray-900">Bảng điều khiển Giám sát</h1>
             </div>
 
             <!-- Sensor Status Section -->
             <div class="mb-6 flex-shrink-0">
-                <h2 class="text-lg font-semibold mb-2 border-b border-gray-600 pb-2">Trạng thái Cảm biến</h2>
+                <h2 class="text-lg font-semibold mb-2 border-b border-gray-200 pb-2 text-gray-900">Trạng thái Cảm biến</h2>
                 <div id="sensor-list" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                    <p class="text-gray-400">Đang chờ dữ liệu...</p>
+                    <p class="text-gray-500">Đang chờ dữ liệu...</p>
                 </div>
             </div>
 
             <!-- Alert Log Section -->
             <div class="flex-grow flex flex-col">
-                <h2 class="text-lg font-semibold mb-2 border-b border-gray-600 pb-2">Nhật ký Cảnh báo</h2>
+                <h2 class="text-lg font-semibold mb-2 border-b border-gray-200 pb-2 text-gray-900">Nhật ký Cảnh báo</h2>
                 <div id="alert-log" class="flex-grow space-y-3 overflow-y-auto custom-scrollbar pr-2">
-                    <p class="text-gray-400">Chưa có cảnh báo nào.</p>
+                    <p class="text-gray-500">Chưa có cảnh báo nào.</p>
                 </div>
             </div>
         </div>
@@ -90,7 +97,7 @@
     <!-- LeafletJS JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
-    <!-- FIX: Lucide Icons script is moved here, before the main script that uses it. -->
+    <!-- Lucide Icons script -->
     <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide.min.js"></script>
 
     <!-- ================================================================================= -->
@@ -101,7 +108,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, onChildAdded } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
 
-        // === BƯỚC 1: CẤU HÌNH FIREBASE (ĐÃ CẬP NHẬT TỪ THÔNG TIN CỦA BẠN) ===
+        // === BƯỚC 1: CẤU HÌNH FIREBASE ===
         const firebaseConfig = {
             apiKey: "AIzaSyBIiEB2Tu7j8CDUKKG7eafAYkLz2AXFGA8",
             authDomain: "aisos-5b68e.firebaseapp.com",
@@ -122,9 +129,9 @@
         let sensorMarkers = {};
         let alertMarkers = {};
 
-        // Initialize Map (Vườn Quốc gia Cúc Phương)
+        // THEME-LIGHT: Initialize Map with light theme
         const map = L.map('map').setView([20.315, 105.619], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 20
@@ -137,17 +144,6 @@
             fire: L.divIcon({ className: 'custom-div-icon', html: "<div class='marker-pin-fire'></div><i data-lucide='flame'></i>", iconSize: [30, 42], iconAnchor: [15, 42], popupAnchor: [0, -35] }),
             noise: L.divIcon({ className: 'custom-div-icon', html: "<div class='marker-pin-noise'></div><i data-lucide='siren'></i>", iconSize: [30, 42], iconAnchor: [15, 42], popupAnchor: [0, -35] }),
         };
-
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @keyframes pulse-fire { 0% { box-shadow: 0 0 0 0 rgba(255, 99, 71, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(255, 99, 71, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 99, 71, 0); } }
-            @keyframes pulse-noise { 0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(250, 204, 21, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); } }
-            .marker-pin-fire, .marker-pin-noise { width: 30px; height: 30px; border-radius: 50% 50% 50% 0; position: absolute; transform: rotate(-45deg); left: 50%; top: 50%; margin: -15px 0 0 -15px; }
-            .marker-pin-fire { background-color: tomato; animation: pulse-fire 2s infinite; }
-            .marker-pin-noise { background-color: #facc15; animation: pulse-noise 2s infinite; }
-            .custom-div-icon i { position: absolute; left: 6px; top: 5px; color: white; }
-        `;
-        document.head.appendChild(style);
 
         // === GIAI ĐOẠN 2 & 3: MÔ PHỎNG DỮ LIỆU VÀ "AI LOGIC" ===
         const virtualSensors = {
@@ -213,19 +209,19 @@
             sensorListDiv.innerHTML = '';
 
             Object.entries(sensorsData).forEach(([sensorId, data]) => {
-                let status = 'normal', statusColor = 'text-green-400', icon = icons.normal;
+                let status = 'normal', statusColor = 'text-green-600', icon = icons.normal;
                 if (data.temperature > 45 || data.sound_level > 85) {
-                    status = 'danger'; statusColor = 'text-red-500'; icon = icons.danger;
+                    status = 'danger'; statusColor = 'text-red-600'; icon = icons.danger;
                 } else if (data.temperature > 38 || data.sound_level > 70) {
-                    status = 'warning'; statusColor = 'text-yellow-400'; icon = icons.warning;
+                    status = 'warning'; statusColor = 'text-yellow-500'; icon = icons.warning;
                 }
 
                 const sensorElement = document.createElement('div');
-                sensorElement.className = 'bg-gray-700 p-3 rounded-lg flex items-center justify-between';
-                sensorElement.innerHTML = `<div><p class="font-semibold">${data.name}</p><p class="text-xs text-gray-400">T: ${data.temperature}°C, H: ${data.humidity}%, S: ${data.sound_level}dB</p></div><div class="flex items-center"><span class="text-sm font-medium mr-2 ${statusColor}">${status.charAt(0).toUpperCase() + status.slice(1)}</span><div class="w-3 h-3 rounded-full ${status === 'normal' ? 'bg-green-400' : status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}"></div></div>`;
+                sensorElement.className = 'bg-gray-50 p-3 rounded-lg flex items-center justify-between border border-gray-200';
+                sensorElement.innerHTML = `<div><p class="font-semibold text-gray-700">${data.name}</p><p class="text-xs text-gray-500">T: ${data.temperature}°C, H: ${data.humidity}%, S: ${data.sound_level}dB</p></div><div class="flex items-center"><span class="text-sm font-medium mr-2 ${statusColor}">${status.charAt(0).toUpperCase() + status.slice(1)}</span><div class="w-3 h-3 rounded-full ${status === 'normal' ? 'bg-green-500' : status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}"></div></div>`;
                 sensorListDiv.appendChild(sensorElement);
                 
-                const popupContent = `<div class="text-base font-bold mb-2">${data.name}</div><div class="text-sm"><b>Nhiệt độ:</b> ${data.temperature}°C</div><div class="text-sm"><b>Độ ẩm:</b> ${data.humidity}%</div><div class="text-sm"><b>Âm thanh:</b> ${data.sound_level} dB</div><div class="text-xs text-gray-400 mt-2"><i>Cập nhật: ${new Date(data.timestamp).toLocaleTimeString()}</i></div>`;
+                const popupContent = `<div class="text-base font-bold mb-2 text-gray-900">${data.name}</div><div class="text-sm"><b>Nhiệt độ:</b> ${data.temperature}°C</div><div class="text-sm"><b>Độ ẩm:</b> ${data.humidity}%</div><div class="text-sm"><b>Âm thanh:</b> ${data.sound_level} dB</div><div class="text-xs text-gray-400 mt-2"><i>Cập nhật: ${new Date(data.timestamp).toLocaleTimeString()}</i></div>`;
 
                 if (sensorMarkers[sensorId]) {
                     sensorMarkers[sensorId].setLatLng([data.lat, data.lng]).setIcon(icon).setPopupContent(popupContent);
@@ -240,34 +236,32 @@
             const alertData = snapshot.val();
             const alertId = snapshot.key;
 
-            if(alertLogDiv.querySelector('.text-gray-400')) alertLogDiv.innerHTML = '';
+            if(alertLogDiv.querySelector('.text-gray-500')) alertLogDiv.innerHTML = '';
             
             const isFire = alertData.type === 'fire';
             const alertIcon = isFire ? icons.fire : icons.noise;
             const iconHTML = isFire ? `<i data-lucide="flame" class="w-5 h-5 text-white"></i>` : `<i data-lucide="siren" class="w-5 h-5 text-white"></i>`;
-            const bgColor = isFire ? 'bg-red-600' : 'bg-yellow-500';
+            const bgColor = isFire ? 'bg-red-500' : 'bg-yellow-400';
+            const borderColor = isFire ? 'border-red-500' : 'border-yellow-400';
 
             const alertElement = document.createElement('div');
-            alertElement.className = 'bg-gray-700 p-3 rounded-lg border-l-4 ' + (isFire ? 'border-red-500' : 'border-yellow-400');
-            alertElement.innerHTML = `<div class="flex items-center mb-1"><div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center mr-3">${iconHTML}</div><div class="flex-grow"><p class="font-bold">${alertData.message}</p><p class="text-sm text-gray-300">${alertData.details}</p></div></div><p class="text-xs text-gray-400 text-right">Vào lúc ${new Date(alertData.timestamp).toLocaleTimeString()}</p>`;
+            alertElement.className = `bg-white p-3 rounded-lg border-l-4 ${borderColor} shadow-sm`;
+            alertElement.innerHTML = `<div class="flex items-center mb-1"><div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center mr-3 flex-shrink-0">${iconHTML}</div><div class="flex-grow"><p class="font-bold text-gray-800">${alertData.message}</p><p class="text-sm text-gray-600">${alertData.details}</p></div></div><p class="text-xs text-gray-400 text-right">Vào lúc ${new Date(alertData.timestamp).toLocaleTimeString()}</p>`;
             alertLogDiv.prepend(alertElement);
 
-            const popupContent = `<div class="text-lg font-bold ${isFire ? 'text-red-400' : 'text-yellow-400'} mb-2">🚨 CẢNH BÁO ${alertData.type.toUpperCase()} 🚨</div><div class="text-base">${alertData.message}</div><div class="text-sm text-gray-300">${alertData.details}</div><div class="text-xs text-gray-400 mt-2"><i>Thời gian: ${new Date(alertData.timestamp).toLocaleString()}</i></div>`;
+            const popupContent = `<div class="text-lg font-bold ${isFire ? 'text-red-600' : 'text-yellow-500'} mb-2">🚨 CẢNH BÁO ${alertData.type.toUpperCase()} 🚨</div><div class="text-base text-gray-800">${alertData.message}</div><div class="text-sm text-gray-600">${alertData.details}</div><div class="text-xs text-gray-400 mt-2"><i>Thời gian: ${new Date(alertData.timestamp).toLocaleString()}</i></div>`;
             
             if (!alertMarkers[alertId]) {
-                 // FIX: The variable 'data' was out of scope. Changed to 'alertData.lng'.
                  const alertMarker = L.marker([alertData.lat, alertData.lng], { icon: alertIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(popupContent).openPopup();
                 alertMarkers[alertId] = alertMarker;
                 map.flyTo([alertData.lat, alertData.lng], 15);
             }
             
-            // FIX: Check if lucide is defined before calling it.
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
         });
         
-        // FIX: Check if lucide is defined before calling it.
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
