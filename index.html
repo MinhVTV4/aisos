@@ -129,8 +129,14 @@
         let sensorMarkers = {};
         let alertMarkers = {};
 
+        // UX Improvement: Map view variables
+        const defaultCenter = [20.315, 105.619];
+        const defaultZoom = 13;
+        const alertZoom = 14; // Less aggressive zoom
+        let returnToOverviewTimer = null;
+
         // THEME-LIGHT: Initialize Map with light theme
-        const map = L.map('map').setView([20.315, 105.619], 13);
+        const map = L.map('map').setView(defaultCenter, defaultZoom);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
@@ -170,10 +176,12 @@
         };
 
         function generateSensorData() {
-            const isHighRisk = Math.random() < 0.05;
-            const isNoiseRisk = !isHighRisk && Math.random() < 0.05;
+            // UX Improvement: Reduced alert frequency for more realistic simulation
+            const isFireRisk = Math.random() < 0.015; // 1.5% chance of fire risk
+            const isNoiseRisk = !isFireRisk && Math.random() < 0.02; // 2% chance of noise risk
+
             let temperature, humidity, sound_level;
-            if (isHighRisk) {
+            if (isFireRisk) {
                 temperature = 45 + Math.random() * 10;
                 humidity = 15 + Math.random() * 10;
                 sound_level = 50 + Math.random() * 15;
@@ -252,6 +260,11 @@
             const alertData = snapshot.val();
             const alertId = snapshot.key;
 
+            // Clear previous timer if a new alert comes in
+            if (returnToOverviewTimer) {
+                clearTimeout(returnToOverviewTimer);
+            }
+
             if(alertLogDiv.querySelector('.text-gray-500')) alertLogDiv.innerHTML = '';
             
             const isFire = alertData.type === 'fire';
@@ -270,8 +283,14 @@
             if (!alertMarkers[alertId]) {
                  const alertMarker = L.marker([alertData.lat, alertData.lng], { icon: alertIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(popupContent).openPopup();
                 alertMarkers[alertId] = alertMarker;
-                // Fly to the alert with a closer zoom for better observation
-                map.flyTo([alertData.lat, alertData.lng], 16);
+                
+                // UX Improvement: Fly to a reasonable zoom level
+                map.flyTo([alertData.lat, alertData.lng], alertZoom);
+
+                // UX Improvement: Set a timer to return to the default overview
+                returnToOverviewTimer = setTimeout(() => {
+                    map.flyTo(defaultCenter, defaultZoom);
+                }, 10000); // 10 seconds
             }
             
             if (typeof lucide !== 'undefined') {
