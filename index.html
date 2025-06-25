@@ -71,7 +71,6 @@
                 <h1 class="text-xl font-bold ml-3 text-gray-900">Bảng điều khiển Giám sát</h1>
             </div>
             
-            <!-- NEW: AI Test Button -->
             <div class="mb-4">
                 <button id="test-ai-btn" class="w-full text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-100 hover:bg-indigo-200 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
                     <i data-lucide="bot" class="w-4 h-4 mr-2"></i>
@@ -79,8 +78,6 @@
                 </button>
             </div>
 
-
-            <!-- Sensor Status Section -->
             <div class="mb-6 flex-shrink-0">
                 <h2 class="text-lg font-semibold mb-2 border-b border-gray-200 pb-2 text-gray-900">Trạng thái Cảm biến</h2>
                 <div id="sensor-list" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-2">
@@ -88,7 +85,6 @@
                 </div>
             </div>
 
-            <!-- Alert Log Section -->
             <div class="flex-grow flex flex-col">
                 <h2 class="text-lg font-semibold mb-2 border-b border-gray-200 pb-2 text-gray-900">Nhật ký Cảnh báo</h2>
                 <div id="alert-log" class="flex-grow space-y-3 overflow-y-auto custom-scrollbar pr-2">
@@ -127,12 +123,14 @@
     <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide.min.js"></script>
 
     <!-- ================================================================================= -->
-    <!-- === SCRIPT CHÍNH CỦA ỨNG DỤNG (SỬ DỤNG FIREBASE V11 SDK)                      === -->
+    <!-- === SCRIPT CHÍNH CỦA ỨNG DỤNG (SỬ DỤNG FIREBASE AI SDK)                      === -->
     <!-- ================================================================================= -->
     <script type="module">
-        // Import the functions you need from the SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+        // NEW: Import from firebase-ai.js
+        import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-ai.js";
+
 
         // === BƯỚC 1: CẤU HÌNH FIREBASE ===
         const firebaseConfig = {
@@ -149,6 +147,17 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // NEW: Initialize Firebase AI Model
+        let model;
+        try {
+            const ai = getAI(app, { backend: new GoogleAIBackend() });
+            model = getGenerativeModel(ai, { model: "gemini-2.0-flash" });
+            console.log("Firebase AI Model initialized successfully.");
+        } catch(e) {
+            console.error("Lỗi khi khởi tạo AI Model:", e);
+            alert(`Không thể khởi tạo Trợ lý AI. Lỗi: ${e.message}`);
+        }
+
         // === KHỞI TẠO BIẾN VÀ BẢN ĐỒ ===
         const sensorListDiv = document.getElementById('sensor-list');
         const alertLogDiv = document.getElementById('alert-log');
@@ -159,7 +168,7 @@
         const defaultZoom = 13;
         const alertZoom = 14; 
         let returnToOverviewTimer = null;
-        let activeIncident = null; // Holds the current simulated incident
+        let activeIncident = null; 
 
         const map = L.map('map').setView(defaultCenter, defaultZoom);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -176,7 +185,6 @@
             noise: L.divIcon({ className: 'custom-div-icon', html: "<div class='marker-pin-noise'></div><i data-lucide='siren'></i>", iconSize: [30, 42], iconAnchor: [15, 42], popupAnchor: [0, -35] }),
         };
 
-        // === GIAI ĐOẠN 2 & 3: MÔ PHỎNG DỮ LIỆU THÔNG MINH HƠN ===
         const virtualSensors = {
             "CP-S-001": { lat: 20.341, lng: 105.592, name: "Trạm 1: Cổng Vườn" }, "CP-S-002": { lat: 20.249, lng: 105.717, name: "Trạm 2: Hồ Mạc" }, "CP-S-003": { lat: 20.395, lng: 105.651, name: "Trạm 3: Đỉnh Mây Bạc" }, "CP-S-004": { lat: 20.298, lng: 105.623, name: "Trạm 4: Cây Trò Ngàn Năm" }, "CP-S-005": { lat: 20.315, lng: 105.619, name: "Trạm 5: Trung tâm Cứu hộ" }, "CP-S-006": { lat: 20.320, lng: 105.680, name: "Trạm 6: Thung lũng bí ẩn" }, "CP-S-007": { lat: 20.285, lng: 105.655, name: "Trạm 7: Động Người Xưa" }, "CP-S-008": { lat: 20.350, lng: 105.700, name: "Trạm 8: Rìa phía Đông" }, "CP-S-009": { lat: 20.260, lng: 105.600, name: "Trạm 9: Gần bản Mường" }, "CP-S-010": { lat: 20.370, lng: 105.615, name: "Trạm 10: Vách đá vôi" }, "CP-S-011": { lat: 20.333, lng: 105.633, name: "Trạm 11: Khu vực cây Sấu" }, "CP-S-012": { lat: 20.291, lng: 105.698, name: "Trạm 12: Suối nước nóng" }, "CP-S-013": { lat: 20.277, lng: 105.672, name: "Trạm 13: Động Sơn Cung" }, "CP-S-014": { lat: 20.365, lng: 105.638, name: "Trạm 14: Tuyến đi bộ" }, "CP-S-015": { lat: 20.305, lng: 105.589, name: "Trạm 15: Rìa phía Tây" }, "CP-S-016": { lat: 20.255, lng: 105.630, name: "Trạm 16: Khu vực tre, nứa" }, "CP-S-017": { lat: 20.380, lng: 105.685, name: "Trạm 17: Vùng đệm phía Bắc" }, "CP-S-018": { lat: 20.240, lng: 105.660, name: "Trạm 18: Vùng đệm phía Nam" }, "CP-S-019": { lat: 20.312, lng: 105.650, name: "Trạm 19: Trung tâm vườn" }, "CP-S-020": { lat: 20.355, lng: 105.599, name: "Trạm 20: Gần trung tâm du lịch" }
         };
@@ -187,7 +195,7 @@
                 temperature = 45 + Math.random() * 10; humidity = 15 + Math.random() * 10; sound_level = 50 + Math.random() * 15;
             } else if (incidentType === 'noise') {
                 temperature = 30 + Math.random() * 5; humidity = 50 + Math.random() * 15; sound_level = 85 + Math.random() * 15;
-            } else { // Normal conditions
+            } else {
                 temperature = 28 + Math.random() * 7; humidity = 60 + Math.random() * 20; sound_level = 40 + Math.random() * 10;
             }
             return {
@@ -199,7 +207,6 @@
         function manageIncidents() {
             const now = Date.now();
             if (activeIncident && now > activeIncident.endTime) {
-                console.log(`Sự cố đã kết thúc: ${activeIncident.type}`);
                 activeIncident = null;
             }
             if (!activeIncident) {
@@ -209,12 +216,7 @@
                     const affectedCount = Math.floor(Math.random() * 3) + 1; 
                     const affectedSensors = sensorIds.sort(() => 0.5 - Math.random()).slice(0, affectedCount);
                     const duration = (Math.floor(Math.random() * 2) + 2) * 60 * 1000;
-                    
-                    activeIncident = {
-                        type: incidentType, affectedSensors: affectedSensors,
-                        startTime: now, endTime: now + duration,
-                    };
-                    console.log(`Sự cố mới bắt đầu: ${activeIncident.type} trong ${duration / 1000}s, ảnh hưởng tới: ${activeIncident.affectedSensors.join(', ')}`);
+                    activeIncident = { type: incidentType, affectedSensors, endTime: now + duration };
                 }
             }
         }
@@ -248,7 +250,6 @@
         setInterval(updateAllSensors, 8000); 
         setInterval(manageIncidents, 20000);
 
-        // === GIAI ĐOẠN 4: HIỂN THỊ DỮ LIỆU & CẢNH BÁO TỪ FIREBASE ===
         const sensorsRef = ref(db, 'sensors');
         onValue(sensorsRef, (snapshot) => {
             const sensorsData = snapshot.val();
@@ -268,44 +269,40 @@
             });
         });
 
-        // === GEMINI API INTEGRATION & MODAL HANDLING ===
+        // === GEMINI API INTEGRATION & MODAL HANDLING (using firebase-ai) ===
         const geminiModal = document.getElementById('gemini-modal');
         const modalContent = document.getElementById('modal-content');
         const modalTitle = document.getElementById('modal-title');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const testAiBtn = document.getElementById('test-ai-btn');
 
+        function processMarkdown(text) {
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>');
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            text = text.replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-red-600 px-1 rounded">$1</code>');
+            text = text.replace(/^(\d+\.\s.*)$/gm, '<p class="mb-2">$1</p>');
+            text = text.replace(/\n/g, '<br>');
+            return text;
+        }
+
         async function callGemini(prompt) {
-            const apiKey = ""; // Canvas will provide the key
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            if (!model) {
+                return "<p class='text-red-600'>Lỗi: Mô hình AI chưa được khởi tạo.</p>";
+            }
             try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) { throw new Error(`API Error: ${response.statusText} (Status: ${response.status})`); }
-                const result = await response.json();
-                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
-                    let text = result.candidates[0].content.parts[0].text;
-                    // Basic Markdown to HTML
-                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>');
-                    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-                    text = text.replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-red-600 px-1 rounded">$1</code>');
-                    text = text.replace(/^(\d+\.\s.*)$/gm, '<p class="mb-2">$1</p>'); // Numbered lists
-                    text = text.replace(/\n/g, '<br>');
-                    return text;
-                } else {
-                    console.error("Unexpected API response structure:", result);
-                    return "<p>Đã xảy ra lỗi khi phân tích phản hồi từ AI.</p>";
-                }
+                const result = await model.generateContent(prompt);
+                const response = result.response;
+                return processMarkdown(response.text());
             } catch (error) {
-                console.error("Error calling Gemini API:", error);
-                return `<p class="text-red-600">Không thể kết nối đến dịch vụ AI. <br><br><b>Chi tiết lỗi:</b> ${error.message}<br><br>Vui lòng kiểm tra lại API Key và đảm bảo bạn đã kích hoạt Google AI Platform cho dự án.</p>`;
+                console.error("Lỗi khi gọi Gemini API qua Firebase AI:", error);
+                return `<p class="text-red-600">Không thể kết nối đến dịch vụ AI. <br><br><b>Chi tiết lỗi:</b> ${error.message}</p>`;
             }
         }
 
         function showModal(title, contentPromise) {
             modalTitle.innerHTML = title;
             geminiModal.classList.remove('hidden');
-            modalContent.innerHTML = `<div class="flex justify-center items-center py-10"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div><p class="ml-4 text-gray-600">AI đang phân tích và tạo kế hoạch...</p></div>`;
+            modalContent.innerHTML = `<div class="flex justify-center items-center py-10"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div><p class="ml-4 text-gray-600">AI đang suy nghĩ...</p></div>`;
             if (typeof lucide !== 'undefined') { lucide.createIcons(); }
             
             contentPromise.then(htmlContent => {
@@ -319,35 +316,15 @@
              showModal(title, callGemini(testPrompt));
         });
 
-        alertLogDiv.addEventListener('click', async (e) => {
+        alertLogDiv.addEventListener('click', (e) => {
             const button = e.target.closest('.generate-plan-btn');
             if (button) {
                 const alertDetails = button.dataset;
                 let prompt = "";
                 if (alertDetails.type === 'fire') {
-                    prompt = `Bạn là một chuyên gia về kiểm lâm và ứng phó khẩn cấp tại Vườn Quốc gia Cúc Phương, Việt Nam. 
-                    Một cảnh báo CHÁY RỪNG vừa được phát hiện.
-                    - Vị trí: ${alertDetails.name} (Tọa độ: ${alertDetails.lat}, ${alertDetails.lng})
-                    - Chi tiết: ${alertDetails.details}
-                    Hãy tạo một kế hoạch hành động ngắn gọn, rõ ràng, và ưu tiên cho đội kiểm lâm. 
-                    Sử dụng định dạng Markdown. Bao gồm các mục sau:
-                    1.  **Đánh giá Tình hình (Ưu tiên số 1):** Các bước cần làm ngay để xác định mức độ nguy hiểm.
-                    2.  **Huy động Lực lượng:** Cần bao nhiêu người, liên lạc với ai?
-                    3.  **Trang thiết bị cần thiết:** Liệt kê các dụng cụ chữa cháy quan trọng.
-                    4.  **Phương án Tiếp cận & An toàn:** Hướng di chuyển an toàn và các lưu ý an toàn cho đội.
-                    Phản hồi bằng tiếng Việt.`;
+                    prompt = `Bạn là một chuyên gia về kiểm lâm và ứng phó khẩn cấp tại Vườn Quốc gia Cúc Phương, Việt Nam. Một cảnh báo CHÁY RỪNG vừa được phát hiện. - Vị trí: ${alertDetails.name} (Tọa độ: ${alertDetails.lat}, ${alertDetails.lng}) - Chi tiết: ${alertDetails.details}. Hãy tạo một kế hoạch hành động ngắn gọn, rõ ràng, và ưu tiên cho đội kiểm lâm. Sử dụng định dạng Markdown. Bao gồm các mục: 1. **Đánh giá Tình hình (Ưu tiên số 1):** Các bước cần làm ngay. 2. **Huy động Lực lượng:** Cần bao nhiêu người, liên lạc với ai? 3. **Trang thiết bị cần thiết:** Liệt kê các dụng cụ quan trọng. 4. **Phương án Tiếp cận & An toàn:** Hướng di chuyển và các lưu ý an toàn. Phản hồi bằng tiếng Việt.`;
                 } else if (alertDetails.type === 'noise') {
-                    prompt = `Bạn là một chuyên gia về kiểm lâm và chống phá rừng tại Vườn Quốc gia Cúc Phương, Việt Nam. 
-                    Một cảnh báo TIẾNG ỒN BẤT THƯỜNG (nghi ngờ cưa máy) vừa được phát hiện.
-                    - Vị trí: ${alertDetails.name} (Tọa độ: ${alertDetails.lat}, ${alertDetails.lng})
-                    - Chi tiết: ${alertDetails.details}
-                    Hãy tạo một kế hoạch hành động thận trọng cho đội kiểm lâm tuần tra.
-                    Sử dụng định dạng Markdown. Bao gồm các mục sau:
-                    1.  **Chỉ dẫn Tiếp cận (Ưu tiên An toàn):** Cách tiếp cận vị trí một cách bí mật và an toàn.
-                    2.  **Thu thập Bằng chứng:** Cần làm gì để ghi lại bằng chứng (hình ảnh, video, ghi âm) mà không bị phát hiện?
-                    3.  **Phối hợp & Báo cáo:** Khi nào cần gọi hỗ trợ? Báo cáo cho ai?
-                    4.  **Nguyên tắc Vàng:** Các quy tắc an toàn quan trọng nhất cho đội khi đối mặt với lâm tặc.
-                    Phản hồi bằng tiếng Việt.`;
+                    prompt = `Bạn là một chuyên gia về kiểm lâm và chống phá rừng tại Vườn Quốc gia Cúc Phương, Việt Nam. Một cảnh báo TIẾNG ỒN BẤT THƯỜNG (nghi ngờ cưa máy) vừa được phát hiện. - Vị trí: ${alertDetails.name} (Tọa độ: ${alertDetails.lat}, ${alertDetails.lng}) - Chi tiết: ${alertDetails.details}. Hãy tạo một kế hoạch hành động thận trọng cho đội kiểm lâm. Sử dụng định dạng Markdown. Bao gồm các mục: 1. **Chỉ dẫn Tiếp cận (Ưu tiên An toàn):** Cách tiếp cận bí mật. 2. **Thu thập Bằng chứng:** Cần làm gì để ghi lại bằng chứng? 3. **Phối hợp & Báo cáo:** Khi nào cần gọi hỗ trợ? 4. **Nguyên tắc Vàng:** Các quy tắc an toàn quan trọng nhất. Phản hồi bằng tiếng Việt.`;
                 }
                 const title = `<i data-lucide="sparkles" class="text-blue-500 mr-2"></i>Kế hoạch Hành động được đề xuất`;
                 if (prompt) {
@@ -374,10 +351,9 @@
                  const latestAlert = activeAlertsList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
 
                 activeAlertsList.forEach(alertData => {
-                    // FIX: Add a defensive check for the entire alert object to prevent crashes
                     if (!alertData || typeof alertData.message !== 'string' || typeof alertData.lat !== 'number' || typeof alertData.lng !== 'number') {
                         console.warn("Skipping invalid or malformed alert data:", alertData);
-                        return; // Skip this iteration if data is malformed
+                        return; 
                     }
 
                     const alertId = alertData.sensorId;
@@ -401,7 +377,6 @@
                     }
                 });
 
-                // FIX: Add a defensive check before flying to the latest alert
                 if (latestAlert && typeof latestAlert.lat === 'number' && typeof latestAlert.lng === 'number') {
                     map.flyTo([latestAlert.lat, latestAlert.lng], alertZoom);
                     if (alertMarkers[latestAlert.sensorId]) {
