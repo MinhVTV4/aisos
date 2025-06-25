@@ -147,10 +147,26 @@
 
         // === GIAI ĐOẠN 2 & 3: MÔ PHỎNG DỮ LIỆU VÀ "AI LOGIC" ===
         const virtualSensors = {
-            "CucPhuong-001": { lat: 20.341, lng: 105.592, name: "Trạm Cổng Vườn" },
-            "CucPhuong-002": { lat: 20.249, lng: 105.717, name: "Trạm Hồ Mạc" },
-            "CucPhuong-003": { lat: 20.395, lng: 105.651, name: "Trạm Đỉnh Mây Bạc" },
-            "CucPhuong-004": { lat: 20.298, lng: 105.623, name: "Trạm Cây Trò Ngàn Năm" }
+            "CP-S-001": { lat: 20.341, lng: 105.592, name: "Trạm 1: Cổng Vườn" },
+            "CP-S-002": { lat: 20.249, lng: 105.717, name: "Trạm 2: Hồ Mạc" },
+            "CP-S-003": { lat: 20.395, lng: 105.651, name: "Trạm 3: Đỉnh Mây Bạc" },
+            "CP-S-004": { lat: 20.298, lng: 105.623, name: "Trạm 4: Cây Trò Ngàn Năm" },
+            "CP-S-005": { lat: 20.315, lng: 105.619, name: "Trạm 5: Trung tâm Cứu hộ" },
+            "CP-S-006": { lat: 20.320, lng: 105.680, name: "Trạm 6: Thung lũng bí ẩn" },
+            "CP-S-007": { lat: 20.285, lng: 105.655, name: "Trạm 7: Động Người Xưa" },
+            "CP-S-008": { lat: 20.350, lng: 105.700, name: "Trạm 8: Rìa phía Đông" },
+            "CP-S-009": { lat: 20.260, lng: 105.600, name: "Trạm 9: Gần bản Mường" },
+            "CP-S-010": { lat: 20.370, lng: 105.615, name: "Trạm 10: Vách đá vôi" },
+            "CP-S-011": { lat: 20.333, lng: 105.633, name: "Trạm 11: Khu vực cây Sấu" },
+            "CP-S-012": { lat: 20.291, lng: 105.698, name: "Trạm 12: Suối nước nóng" },
+            "CP-S-013": { lat: 20.277, lng: 105.672, name: "Trạm 13: Động Sơn Cung" },
+            "CP-S-014": { lat: 20.365, lng: 105.638, name: "Trạm 14: Tuyến đi bộ" },
+            "CP-S-015": { lat: 20.305, lng: 105.589, name: "Trạm 15: Rìa phía Tây" },
+            "CP-S-016": { lat: 20.255, lng: 105.630, name: "Trạm 16: Khu vực tre, nứa" },
+            "CP-S-017": { lat: 20.380, lng: 105.685, name: "Trạm 17: Vùng đệm phía Bắc" },
+            "CP-S-018": { lat: 20.240, lng: 105.660, name: "Trạm 18: Vùng đệm phía Nam" },
+            "CP-S-019": { lat: 20.312, lng: 105.650, name: "Trạm 19: Trung tâm vườn" },
+            "CP-S-020": { lat: 20.355, lng: 105.599, name: "Trạm 20: Gần trung tâm du lịch" }
         };
 
         function generateSensorData() {
@@ -254,7 +270,8 @@
             if (!alertMarkers[alertId]) {
                  const alertMarker = L.marker([alertData.lat, alertData.lng], { icon: alertIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(popupContent).openPopup();
                 alertMarkers[alertId] = alertMarker;
-                map.flyTo([alertData.lat, alertData.lng], 15);
+                // Fly to the alert with a closer zoom for better observation
+                map.flyTo([alertData.lat, alertData.lng], 16);
             }
             
             if (typeof lucide !== 'undefined') {
