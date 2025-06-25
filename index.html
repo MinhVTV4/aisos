@@ -182,7 +182,7 @@
               .bindPopup(`<b>${station.name}</b>`);
         });
 
-        // === SIMULATION LOGIC (RESTORED & FIXED) ===
+        // === SIMULATION LOGIC ===
         const virtualSensors = {
             "CP-S-001": { lat: 20.341, lng: 105.592, name: "Trạm 1: Cổng Vườn" }, "CP-S-002": { lat: 20.249, lng: 105.717, name: "Trạm 2: Hồ Mạc" }, "CP-S-003": { lat: 20.395, lng: 105.651, name: "Trạm 3: Đỉnh Mây Bạc" }, "CP-S-004": { lat: 20.298, lng: 105.623, name: "Trạm 4: Cây Trò Ngàn Năm" }, "CP-S-005": { lat: 20.315, lng: 105.619, name: "Trạm 5: Trung tâm Cứu hộ" }, "CP-S-006": { lat: 20.320, lng: 105.680, name: "Trạm 6: Thung lũng bí ẩn" }, "CP-S-007": { lat: 20.285, lng: 105.655, name: "Trạm 7: Động Người Xưa" }, "CP-S-008": { lat: 20.350, lng: 105.700, name: "Trạm 8: Rìa phía Đông" }, "CP-S-009": { lat: 20.260, lng: 105.600, name: "Trạm 9: Gần bản Mường" }, "CP-S-010": { lat: 20.370, lng: 105.615, name: "Trạm 10: Vách đá vôi" }, "CP-S-011": { lat: 20.333, lng: 105.633, name: "Trạm 11: Khu vực cây Sấu" }, "CP-S-012": { lat: 20.291, lng: 105.698, name: "Trạm 12: Suối nước nóng" }, "CP-S-013": { lat: 20.277, lng: 105.672, name: "Trạm 13: Động Sơn Cung" }, "CP-S-014": { lat: 20.365, lng: 105.638, name: "Trạm 14: Tuyến đi bộ" }, "CP-S-015": { lat: 20.305, lng: 105.589, name: "Trạm 15: Rìa phía Tây" }, "CP-S-016": { lat: 20.255, lng: 105.630, name: "Trạm 16: Khu vực tre, nứa" }, "CP-S-017": { lat: 20.380, lng: 105.685, name: "Trạm 17: Vùng đệm phía Bắc" }, "CP-S-018": { lat: 20.240, lng: 105.660, name: "Trạm 18: Vùng đệm phía Nam" }, "CP-S-019": { lat: 20.312, lng: 105.650, name: "Trạm 19: Trung tâm vườn" }, "CP-S-020": { lat: 20.355, lng: 105.599, name: "Trạm 20: Gần trung tâm du lịch" }
         };
@@ -227,7 +227,9 @@
                 }
                 const data = generateSensorData(incidentType);
                 const fullData = { ...data, lat: virtualSensors[sensorId].lat, lng: virtualSensors[sensorId].lng, name: virtualSensors[sensorId].name };
+                
                 await set(ref(db, 'sensors/' + sensorId), fullData);
+
                 if (incidentType) {
                     const alert = {
                         sensorId, type: incidentType,
@@ -242,7 +244,6 @@
             }
         }
         
-        // Start the simulation loops
         setInterval(updateAllSensors, 8000); 
         setInterval(manageIncidents, 10000);
 
@@ -260,11 +261,52 @@
                 sensorElement.dataset.sensorId = sensorId;
                 sensorElement.innerHTML = `<div><p class="font-semibold text-gray-700">${data.name}</p><p class="text-xs text-gray-500">T: ${data.temperature}°C, H: ${data.humidity}%, S: ${data.sound_level}dB</p></div><div class="flex items-center"><span class="text-sm font-medium mr-2 ${statusColor}">${status.charAt(0).toUpperCase() + status.slice(1)}</span><div class="w-3 h-3 rounded-full ${status === 'normal' ? 'bg-green-500' : status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}"></div></div>`;
                 sensorListDiv.appendChild(sensorElement);
-                const popupContent = `<div class="text-base font-bold mb-2 text-gray-900">${data.name}</div><div class="text-sm"><b>Nhiệt độ:</b> ${data.temperature}°C</div><div class="text-sm"><b>Độ ẩm:</b> ${data.humidity}%</div><div class="text-sm"><b>Âm thanh:</b> ${data.sound_level} dB</div><div class="text-xs text-gray-400 mt-2"><i>Cập nhật: ${new Date(data.timestamp).toLocaleTimeString()}</i></div>`;
+                
+                // NEW: Added "Find Route" button to the sensor popup
+                const popupContent = `
+                    <div class="text-base font-bold mb-2 text-gray-900">${data.name}</div>
+                    <div class="text-sm"><b>Nhiệt độ:</b> ${data.temperature}°C</div>
+                    <div class="text-sm"><b>Độ ẩm:</b> ${data.humidity}%</div>
+                    <div class="text-sm"><b>Âm thanh:</b> ${data.sound_level} dB</div>
+                    <div class="text-xs text-gray-400 mt-2"><i>Cập nhật: ${new Date(data.timestamp).toLocaleTimeString()}</i></div>
+                    <div class="mt-3 pt-2 border-t border-gray-200">
+                        <button class="sensor-route-btn text-xs font-semibold text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-full flex items-center w-full justify-center transition-colors" data-lat="${data.lat}" data-lng="${data.lng}">
+                            <i data-lucide="map-pinned" class="w-4 h-4 mr-1"></i>
+                            Chỉ đường tới đây
+                        </button>
+                    </div>`;
+
                 if (sensorMarkers[sensorId]) { sensorMarkers[sensorId].setLatLng([data.lat, data.lng]).setIcon(icon).setPopupContent(popupContent);
                 } else { sensorMarkers[sensorId] = L.marker([data.lat, data.lng], { icon: icon }).addTo(map).bindPopup(popupContent); }
             });
         });
+
+        // --- INTERACTION LOGIC ---
+        function findAndDrawRoute(destinationLatLng) {
+            let closestStation = null;
+            let minDistance = Infinity;
+
+            Object.values(rangerStations).forEach(station => {
+                const stationLatLng = L.latLng(station.lat, station.lng);
+                const distance = destinationLatLng.distanceTo(stationLatLng);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestStation = station;
+                }
+            });
+
+            if (closestStation) {
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                }
+                routingControl = L.Routing.control({
+                    waypoints: [ L.latLng(closestStation.lat, closestStation.lng), destinationLatLng ],
+                    routeWhileDragging: false, show: false, addWaypoints: false,
+                    lineOptions: { styles: [{ color: '#0056b3', opacity: 0.8, weight: 6 }] },
+                    createMarker: () => null
+                }).addTo(map);
+            }
+        }
 
         sensorListDiv.addEventListener('click', (e) => {
             const sensorItem = e.target.closest('[data-sensor-id]');
@@ -278,7 +320,23 @@
             }
         });
 
-        // --- GEMINI & MODAL LOGIC ---
+        // NEW: Event listener for route buttons inside popups
+        map.getContainer().addEventListener('click', function(e) {
+            const button = e.target.closest('.sensor-route-btn');
+            if (button) {
+                const lat = parseFloat(button.dataset.lat);
+                const lng = parseFloat(button.dataset.lng);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    findAndDrawRoute(L.latLng(lat, lng));
+                }
+            }
+        });
+
+        // Call lucide.createIcons whenever a popup is opened
+        map.on('popupopen', function() {
+            if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+        });
+
         const geminiModal = document.getElementById('gemini-modal');
         const modalContent = document.getElementById('modal-content');
         const modalTitle = document.getElementById('modal-title');
@@ -326,9 +384,9 @@
         });
 
         alertLogDiv.addEventListener('click', (e) => {
-            const button = e.target.closest('.generate-plan-btn');
-            if (button) {
-                const alertDetails = button.dataset;
+            const planButton = e.target.closest('.generate-plan-btn');
+            if (planButton) {
+                const alertDetails = planButton.dataset;
                 let prompt = "";
                 if (alertDetails.type === 'fire') {
                     prompt = `Bạn là một chuyên gia về kiểm lâm và ứng phó khẩn cấp tại Vườn Quốc gia Cúc Phương, Việt Nam. Một cảnh báo CHÁY RỪNG vừa được phát hiện. - Vị trí: ${alertDetails.name} (Tọa độ: ${alertDetails.lat}, ${alertDetails.lng}) - Chi tiết: ${alertDetails.details}. Hãy tạo một kế hoạch hành động ngắn gọn, rõ ràng, và ưu tiên cho đội kiểm lâm. Sử dụng định dạng Markdown. Bao gồm các mục: 1. **Đánh giá Tình hình (Ưu tiên số 1):** Các bước cần làm ngay. 2. **Huy động Lực lượng:** Cần bao nhiêu người, liên lạc với ai? 3. **Trang thiết bị cần thiết:** Liệt kê các dụng cụ quan trọng. 4. **Phương án Tiếp cận & An toàn:** Hướng di chuyển và các lưu ý an toàn. Phản hồi bằng tiếng Việt.`;
@@ -338,19 +396,26 @@
                 const title = `<i data-lucide="sparkles" class="text-blue-500 mr-2"></i>Kế hoạch Hành động được đề xuất`;
                 if (prompt) { showModal(title, callGemini(prompt)); }
             }
+
+            const routeButton = e.target.closest('.find-route-btn');
+            if (routeButton) {
+                 const lat = parseFloat(routeButton.dataset.lat);
+                const lng = parseFloat(routeButton.dataset.lng);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    findAndDrawRoute(L.latLng(lat, lng));
+                }
+            }
         });
 
         closeModalBtn.addEventListener('click', () => { geminiModal.classList.add('hidden'); });
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !geminiModal.classList.contains('hidden')) { geminiModal.classList.add('hidden'); } });
 
-        // --- ALERT & ROUTING LOGIC ---
         onValue(ref(db, 'active_alerts'), (snapshot) => {
             const allActiveAlerts = snapshot.val() || {};
             alertLogDiv.innerHTML = '<p class="text-gray-500">Chưa có cảnh báo nào.</p>';
             Object.values(alertMarkers).forEach(marker => marker.remove());
             alertMarkers = {};
             if (returnToOverviewTimer) { clearTimeout(returnToOverviewTimer); }
-            if (routingControl) { map.removeControl(routingControl); routingControl = null; }
 
             const activeAlertsList = Object.values(allActiveAlerts).filter(alert => alert && typeof alert === 'object');
             
@@ -385,32 +450,6 @@
                 }
             }
             if (typeof lucide !== 'undefined') { lucide.createIcons(); }
-        });
-        
-        alertLogDiv.addEventListener('click', (e) => {
-            const button = e.target.closest('.find-route-btn');
-            if (button) {
-                const alertLatLng = L.latLng(parseFloat(button.dataset.lat), parseFloat(button.dataset.lng));
-                let closestStation = null;
-                let minDistance = Infinity;
-                Object.values(rangerStations).forEach(station => {
-                    const stationLatLng = L.latLng(station.lat, station.lng);
-                    const distance = alertLatLng.distanceTo(stationLatLng);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestStation = station;
-                    }
-                });
-                if (closestStation) {
-                    if (routingControl) { map.removeControl(routingControl); }
-                    routingControl = L.Routing.control({
-                        waypoints: [ L.latLng(closestStation.lat, closestStation.lng), alertLatLng ],
-                        routeWhileDragging: false, show: false, addWaypoints: false,
-                        lineOptions: { styles: [{ color: '#0056b3', opacity: 0.8, weight: 6 }] },
-                        createMarker: () => null
-                    }).addTo(map);
-                }
-            }
         });
         
         if (typeof lucide !== 'undefined') { lucide.createIcons(); }
