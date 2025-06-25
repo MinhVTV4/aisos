@@ -128,7 +128,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
-        // NEW: Import from firebase-ai.js
         import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-ai.js";
 
 
@@ -169,6 +168,7 @@
         const alertZoom = 14; 
         let returnToOverviewTimer = null;
         let activeIncident = null; 
+        let incidentCooldownUntil = 0; // FIX: New variable for cooldown
 
         const map = L.map('map').setView(defaultCenter, defaultZoom);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -204,19 +204,29 @@
             };
         }
 
+        // --- NEW SIMULATION LOGIC ---
         function manageIncidents() {
             const now = Date.now();
             if (activeIncident && now > activeIncident.endTime) {
+                console.log(`Sự cố đã kết thúc: ${activeIncident.type}`);
+                incidentCooldownUntil = now + 120000; // FIX: Start 2-minute cooldown
                 activeIncident = null;
             }
-            if (!activeIncident) {
-                if (Math.random() < 0.15) { 
+
+            // FIX: Check for cooldown before creating a new incident
+            if (!activeIncident && now > incidentCooldownUntil) {
+                if (Math.random() < 0.2) { // Chance to start a new incident
                     const sensorIds = Object.keys(virtualSensors);
                     const incidentType = Math.random() < 0.5 ? 'fire' : 'noise';
-                    const affectedCount = Math.floor(Math.random() * 3) + 1; 
+                    const affectedCount = 1; // FIX: Only 1 sensor is affected
                     const affectedSensors = sensorIds.sort(() => 0.5 - Math.random()).slice(0, affectedCount);
-                    const duration = (Math.floor(Math.random() * 2) + 2) * 60 * 1000;
-                    activeIncident = { type: incidentType, affectedSensors, endTime: now + duration };
+                    const duration = (Math.floor(Math.random() * 2) + 2) * 60 * 1000; // 2 to 3 minutes
+                    
+                    activeIncident = {
+                        type: incidentType, affectedSensors: affectedSensors,
+                        endTime: now + duration,
+                    };
+                    console.log(`Sự cố mới bắt đầu: ${activeIncident.type} trong ${duration / 1000}s, ảnh hưởng tới: ${activeIncident.affectedSensors.join(', ')}`);
                 }
             }
         }
@@ -248,8 +258,9 @@
         }
 
         setInterval(updateAllSensors, 8000); 
-        setInterval(manageIncidents, 20000);
+        setInterval(manageIncidents, 10000); // Check for incidents more frequently
 
+        // --- UI & FIREBASE DATA HANDLING ---
         const sensorsRef = ref(db, 'sensors');
         onValue(sensorsRef, (snapshot) => {
             const sensorsData = snapshot.val();
@@ -269,7 +280,6 @@
             });
         });
 
-        // === GEMINI API INTEGRATION & MODAL HANDLING (using firebase-ai) ===
         const geminiModal = document.getElementById('gemini-modal');
         const modalContent = document.getElementById('modal-content');
         const modalTitle = document.getElementById('modal-title');
@@ -286,15 +296,16 @@
         }
 
         async function callGemini(prompt) {
-            if (!model) {
-                return "<p class='text-red-600'>Lỗi: Mô hình AI chưa được khởi tạo.</p>";
-            }
+            if (!model) { return "<p class='text-red-600'>Lỗi: Mô hình AI chưa được khởi tạo.</p>"; }
             try {
                 const result = await model.generateContent(prompt);
                 const response = result.response;
                 return processMarkdown(response.text());
             } catch (error) {
                 console.error("Lỗi khi gọi Gemini API qua Firebase AI:", error);
+                if (error.message && error.message.includes("500")) {
+                     return `<p class="text-orange-600">Trợ lý AI hiện đang quá tải. Vui lòng thử lại sau vài giây.</p>`;
+                }
                 return `<p class="text-red-600">Không thể kết nối đến dịch vụ AI. <br><br><b>Chi tiết lỗi:</b> ${error.message}</p>`;
             }
         }
@@ -327,9 +338,7 @@
                     prompt = `Bạn là một chuyên gia về kiểm lâm và chống phá rừng tại Vườn Quốc gia Cúc Phương, Việt Nam. Một cảnh báo TIẾNG ỒN BẤT THƯỜNG (nghi ngờ cưa máy) vừa được phát hiện. - Vị trí: ${alertDetails.name} (Tọa độ: ${alertDetails.lat}, ${alertDetails.lng}) - Chi tiết: ${alertDetails.details}. Hãy tạo một kế hoạch hành động thận trọng cho đội kiểm lâm. Sử dụng định dạng Markdown. Bao gồm các mục: 1. **Chỉ dẫn Tiếp cận (Ưu tiên An toàn):** Cách tiếp cận bí mật. 2. **Thu thập Bằng chứng:** Cần làm gì để ghi lại bằng chứng? 3. **Phối hợp & Báo cáo:** Khi nào cần gọi hỗ trợ? 4. **Nguyên tắc Vàng:** Các quy tắc an toàn quan trọng nhất. Phản hồi bằng tiếng Việt.`;
                 }
                 const title = `<i data-lucide="sparkles" class="text-blue-500 mr-2"></i>Kế hoạch Hành động được đề xuất`;
-                if (prompt) {
-                    showModal(title, callGemini(prompt));
-                }
+                if (prompt) { showModal(title, callGemini(prompt)); }
             }
         });
 
