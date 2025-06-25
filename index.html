@@ -59,6 +59,11 @@
         .marker-pin-fire { background-color: #dc2626; animation: pulse-fire 2s infinite; } /* red-600 */
         .marker-pin-noise { background-color: #eab308; animation: pulse-noise 2s infinite; } /* yellow-500 */
         .custom-div-icon i { position: absolute; left: 6px; top: 5px; color: white; }
+
+        /* FIX: Ensure modal is on top of everything */
+        #gemini-modal {
+            z-index: 2000;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -100,7 +105,7 @@
     </div>
 
     <!-- Modal for Gemini Action Plan -->
-    <div id="gemini-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div id="gemini-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center hidden">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl transform transition-all">
             <div class="flex items-center justify-between mb-4">
                 <h3 id="modal-title" class="text-xl font-bold text-gray-900 flex items-center">
@@ -168,7 +173,7 @@
         const alertZoom = 14; 
         let returnToOverviewTimer = null;
         let activeIncident = null; 
-        let incidentCooldownUntil = 0; // FIX: New variable for cooldown
+        let incidentCooldownUntil = 0;
 
         const map = L.map('map').setView(defaultCenter, defaultZoom);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -204,29 +209,19 @@
             };
         }
 
-        // --- NEW SIMULATION LOGIC ---
         function manageIncidents() {
             const now = Date.now();
             if (activeIncident && now > activeIncident.endTime) {
-                console.log(`Sự cố đã kết thúc: ${activeIncident.type}`);
-                incidentCooldownUntil = now + 120000; // FIX: Start 2-minute cooldown
+                incidentCooldownUntil = now + 120000;
                 activeIncident = null;
             }
-
-            // FIX: Check for cooldown before creating a new incident
             if (!activeIncident && now > incidentCooldownUntil) {
-                if (Math.random() < 0.2) { // Chance to start a new incident
+                if (Math.random() < 0.2) { 
                     const sensorIds = Object.keys(virtualSensors);
                     const incidentType = Math.random() < 0.5 ? 'fire' : 'noise';
-                    const affectedCount = 1; // FIX: Only 1 sensor is affected
-                    const affectedSensors = sensorIds.sort(() => 0.5 - Math.random()).slice(0, affectedCount);
-                    const duration = (Math.floor(Math.random() * 2) + 2) * 60 * 1000; // 2 to 3 minutes
-                    
-                    activeIncident = {
-                        type: incidentType, affectedSensors: affectedSensors,
-                        endTime: now + duration,
-                    };
-                    console.log(`Sự cố mới bắt đầu: ${activeIncident.type} trong ${duration / 1000}s, ảnh hưởng tới: ${activeIncident.affectedSensors.join(', ')}`);
+                    const affectedSensors = sensorIds.sort(() => 0.5 - Math.random()).slice(0, 1);
+                    const duration = (Math.floor(Math.random() * 2) + 2) * 60 * 1000;
+                    activeIncident = { type: incidentType, affectedSensors, endTime: now + duration };
                 }
             }
         }
@@ -258,7 +253,7 @@
         }
 
         setInterval(updateAllSensors, 8000); 
-        setInterval(manageIncidents, 10000); // Check for incidents more frequently
+        setInterval(manageIncidents, 10000);
 
         // --- UI & FIREBASE DATA HANDLING ---
         const sensorsRef = ref(db, 'sensors');
@@ -270,14 +265,33 @@
                 let status = 'normal', statusColor = 'text-green-600', icon = icons.normal;
                 if (data.temperature > 45 || data.sound_level > 85) { status = 'danger'; statusColor = 'text-red-600'; icon = icons.danger;
                 } else if (data.temperature > 38 || data.sound_level > 70) { status = 'warning'; statusColor = 'text-yellow-500'; icon = icons.warning; }
+                
                 const sensorElement = document.createElement('div');
-                sensorElement.className = 'bg-gray-50 p-3 rounded-lg flex items-center justify-between border border-gray-200';
+                // NEW: Added interactive classes and data attribute
+                sensorElement.className = 'bg-gray-50 p-3 rounded-lg flex items-center justify-between border border-gray-200 cursor-pointer hover:bg-gray-100 hover:border-blue-400 transition-colors';
+                sensorElement.dataset.sensorId = sensorId; // IMPORTANT: Add sensor ID for lookup
+                
                 sensorElement.innerHTML = `<div><p class="font-semibold text-gray-700">${data.name}</p><p class="text-xs text-gray-500">T: ${data.temperature}°C, H: ${data.humidity}%, S: ${data.sound_level}dB</p></div><div class="flex items-center"><span class="text-sm font-medium mr-2 ${statusColor}">${status.charAt(0).toUpperCase() + status.slice(1)}</span><div class="w-3 h-3 rounded-full ${status === 'normal' ? 'bg-green-500' : status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}"></div></div>`;
                 sensorListDiv.appendChild(sensorElement);
+                
                 const popupContent = `<div class="text-base font-bold mb-2 text-gray-900">${data.name}</div><div class="text-sm"><b>Nhiệt độ:</b> ${data.temperature}°C</div><div class="text-sm"><b>Độ ẩm:</b> ${data.humidity}%</div><div class="text-sm"><b>Âm thanh:</b> ${data.sound_level} dB</div><div class="text-xs text-gray-400 mt-2"><i>Cập nhật: ${new Date(data.timestamp).toLocaleTimeString()}</i></div>`;
                 if (sensorMarkers[sensorId]) { sensorMarkers[sensorId].setLatLng([data.lat, data.lng]).setIcon(icon).setPopupContent(popupContent);
                 } else { sensorMarkers[sensorId] = L.marker([data.lat, data.lng], { icon: icon }).addTo(map).bindPopup(popupContent); }
             });
+        });
+
+        // NEW: Event listener for the entire sensor list (Event Delegation)
+        sensorListDiv.addEventListener('click', (e) => {
+            const sensorItem = e.target.closest('[data-sensor-id]');
+            if (sensorItem) {
+                const sensorId = sensorItem.dataset.sensorId;
+                const marker = sensorMarkers[sensorId];
+                if (marker) {
+                    const latLng = marker.getLatLng();
+                    map.flyTo(latLng, 16); // Zoom in a bit closer
+                    marker.openPopup();
+                }
+            }
         });
 
         const geminiModal = document.getElementById('gemini-modal');
@@ -303,7 +317,7 @@
                 return processMarkdown(response.text());
             } catch (error) {
                 console.error("Lỗi khi gọi Gemini API qua Firebase AI:", error);
-                if (error.message && error.message.includes("500")) {
+                if (error.message && (error.message.includes("500") || error.message.includes("overloaded"))) {
                      return `<p class="text-orange-600">Trợ lý AI hiện đang quá tải. Vui lòng thử lại sau vài giây.</p>`;
                 }
                 return `<p class="text-red-600">Không thể kết nối đến dịch vụ AI. <br><br><b>Chi tiết lỗi:</b> ${error.message}</p>`;
