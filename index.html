@@ -16,9 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide.min.js"></script>
-
+    <!-- NOTE: Lucide Icons script moved to the end of the body for better loading order -->
 
     <style>
         body {
@@ -92,6 +90,9 @@
     <!-- LeafletJS JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
+    <!-- FIX: Lucide Icons script is moved here, before the main script that uses it. -->
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide.min.js"></script>
+
     <!-- ================================================================================= -->
     <!-- === SCRIPT CHÍNH CỦA ỨNG DỤNG (SỬ DỤNG FIREBASE V11 SDK)                      === -->
     <!-- ================================================================================= -->
@@ -254,14 +255,22 @@
             const popupContent = `<div class="text-lg font-bold ${isFire ? 'text-red-400' : 'text-yellow-400'} mb-2">🚨 CẢNH BÁO ${alertData.type.toUpperCase()} 🚨</div><div class="text-base">${alertData.message}</div><div class="text-sm text-gray-300">${alertData.details}</div><div class="text-xs text-gray-400 mt-2"><i>Thời gian: ${new Date(alertData.timestamp).toLocaleString()}</i></div>`;
             
             if (!alertMarkers[alertId]) {
+                 // FIX: The variable 'data' was out of scope. Changed to 'alertData.lng'.
                  const alertMarker = L.marker([alertData.lat, alertData.lng], { icon: alertIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(popupContent).openPopup();
                 alertMarkers[alertId] = alertMarker;
                 map.flyTo([alertData.lat, alertData.lng], 15);
             }
-            lucide.createIcons();
+            
+            // FIX: Check if lucide is defined before calling it.
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
         });
         
-        lucide.createIcons();
+        // FIX: Check if lucide is defined before calling it.
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     </script>
 
 </body>
