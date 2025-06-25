@@ -94,6 +94,24 @@
         </div>
     </div>
 
+    <!-- Modal for Gemini Action Plan -->
+    <div id="gemini-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl transform transition-all">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                    <i data-lucide="sparkles" class="text-blue-500 mr-2"></i>
+                    Kế hoạch Hành động được đề xuất
+                </h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="modal-content" class="text-gray-700 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 leading-relaxed">
+                <!-- Content will be injected by JS -->
+            </div>
+        </div>
+    </div>
+
     <!-- LeafletJS JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
@@ -129,13 +147,12 @@
         let sensorMarkers = {};
         let alertMarkers = {};
 
-        // UX Improvement: Map view variables
         const defaultCenter = [20.315, 105.619];
         const defaultZoom = 13;
-        const alertZoom = 14; // Less aggressive zoom
+        const alertZoom = 14; 
         let returnToOverviewTimer = null;
+        let activeIncident = null; // Holds the current simulated incident
 
-        // THEME-LIGHT: Initialize Map with light theme
         const map = L.map('map').setView(defaultCenter, defaultZoom);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -151,156 +168,219 @@
             noise: L.divIcon({ className: 'custom-div-icon', html: "<div class='marker-pin-noise'></div><i data-lucide='siren'></i>", iconSize: [30, 42], iconAnchor: [15, 42], popupAnchor: [0, -35] }),
         };
 
-        // === GIAI ĐOẠN 2 & 3: MÔ PHỎNG DỮ LIỆU VÀ "AI LOGIC" ===
+        // === GIAI ĐOẠN 2 & 3: MÔ PHỎNG DỮ LIỆU THÔNG MINH HƠN ===
         const virtualSensors = {
-            "CP-S-001": { lat: 20.341, lng: 105.592, name: "Trạm 1: Cổng Vườn" },
-            "CP-S-002": { lat: 20.249, lng: 105.717, name: "Trạm 2: Hồ Mạc" },
-            "CP-S-003": { lat: 20.395, lng: 105.651, name: "Trạm 3: Đỉnh Mây Bạc" },
-            "CP-S-004": { lat: 20.298, lng: 105.623, name: "Trạm 4: Cây Trò Ngàn Năm" },
-            "CP-S-005": { lat: 20.315, lng: 105.619, name: "Trạm 5: Trung tâm Cứu hộ" },
-            "CP-S-006": { lat: 20.320, lng: 105.680, name: "Trạm 6: Thung lũng bí ẩn" },
-            "CP-S-007": { lat: 20.285, lng: 105.655, name: "Trạm 7: Động Người Xưa" },
-            "CP-S-008": { lat: 20.350, lng: 105.700, name: "Trạm 8: Rìa phía Đông" },
-            "CP-S-009": { lat: 20.260, lng: 105.600, name: "Trạm 9: Gần bản Mường" },
-            "CP-S-010": { lat: 20.370, lng: 105.615, name: "Trạm 10: Vách đá vôi" },
-            "CP-S-011": { lat: 20.333, lng: 105.633, name: "Trạm 11: Khu vực cây Sấu" },
-            "CP-S-012": { lat: 20.291, lng: 105.698, name: "Trạm 12: Suối nước nóng" },
-            "CP-S-013": { lat: 20.277, lng: 105.672, name: "Trạm 13: Động Sơn Cung" },
-            "CP-S-014": { lat: 20.365, lng: 105.638, name: "Trạm 14: Tuyến đi bộ" },
-            "CP-S-015": { lat: 20.305, lng: 105.589, name: "Trạm 15: Rìa phía Tây" },
-            "CP-S-016": { lat: 20.255, lng: 105.630, name: "Trạm 16: Khu vực tre, nứa" },
-            "CP-S-017": { lat: 20.380, lng: 105.685, name: "Trạm 17: Vùng đệm phía Bắc" },
-            "CP-S-018": { lat: 20.240, lng: 105.660, name: "Trạm 18: Vùng đệm phía Nam" },
-            "CP-S-019": { lat: 20.312, lng: 105.650, name: "Trạm 19: Trung tâm vườn" },
-            "CP-S-020": { lat: 20.355, lng: 105.599, name: "Trạm 20: Gần trung tâm du lịch" }
+            "CP-S-001": { lat: 20.341, lng: 105.592, name: "Trạm 1: Cổng Vườn" }, "CP-S-002": { lat: 20.249, lng: 105.717, name: "Trạm 2: Hồ Mạc" }, "CP-S-003": { lat: 20.395, lng: 105.651, name: "Trạm 3: Đỉnh Mây Bạc" }, "CP-S-004": { lat: 20.298, lng: 105.623, name: "Trạm 4: Cây Trò Ngàn Năm" }, "CP-S-005": { lat: 20.315, lng: 105.619, name: "Trạm 5: Trung tâm Cứu hộ" }, "CP-S-006": { lat: 20.320, lng: 105.680, name: "Trạm 6: Thung lũng bí ẩn" }, "CP-S-007": { lat: 20.285, lng: 105.655, name: "Trạm 7: Động Người Xưa" }, "CP-S-008": { lat: 20.350, lng: 105.700, name: "Trạm 8: Rìa phía Đông" }, "CP-S-009": { lat: 20.260, lng: 105.600, name: "Trạm 9: Gần bản Mường" }, "CP-S-010": { lat: 20.370, lng: 105.615, name: "Trạm 10: Vách đá vôi" }, "CP-S-011": { lat: 20.333, lng: 105.633, name: "Trạm 11: Khu vực cây Sấu" }, "CP-S-012": { lat: 20.291, lng: 105.698, name: "Trạm 12: Suối nước nóng" }, "CP-S-013": { lat: 20.277, lng: 105.672, name: "Trạm 13: Động Sơn Cung" }, "CP-S-014": { lat: 20.365, lng: 105.638, name: "Trạm 14: Tuyến đi bộ" }, "CP-S-015": { lat: 20.305, lng: 105.589, name: "Trạm 15: Rìa phía Tây" }, "CP-S-016": { lat: 20.255, lng: 105.630, name: "Trạm 16: Khu vực tre, nứa" }, "CP-S-017": { lat: 20.380, lng: 105.685, name: "Trạm 17: Vùng đệm phía Bắc" }, "CP-S-018": { lat: 20.240, lng: 105.660, name: "Trạm 18: Vùng đệm phía Nam" }, "CP-S-019": { lat: 20.312, lng: 105.650, name: "Trạm 19: Trung tâm vườn" }, "CP-S-020": { lat: 20.355, lng: 105.599, name: "Trạm 20: Gần trung tâm du lịch" }
         };
 
-        function generateSensorData() {
-            // UX Improvement: Reduced alert frequency for more realistic simulation
-            const isFireRisk = Math.random() < 0.015; // 1.5% chance of fire risk
-            const isNoiseRisk = !isFireRisk && Math.random() < 0.02; // 2% chance of noise risk
-
+        // New function to generate data based on an incident type
+        function generateSensorData(incidentType = null) {
             let temperature, humidity, sound_level;
-            if (isFireRisk) {
-                temperature = 45 + Math.random() * 10;
-                humidity = 15 + Math.random() * 10;
-                sound_level = 50 + Math.random() * 15;
-            } else if (isNoiseRisk) {
-                temperature = 30 + Math.random() * 5;
-                humidity = 50 + Math.random() * 15;
-                sound_level = 85 + Math.random() * 15;
-            } else {
-                temperature = 28 + Math.random() * 7;
-                humidity = 60 + Math.random() * 20;
-                sound_level = 40 + Math.random() * 10;
+            if (incidentType === 'fire') {
+                temperature = 45 + Math.random() * 10; humidity = 15 + Math.random() * 10; sound_level = 50 + Math.random() * 15;
+            } else if (incidentType === 'noise') {
+                temperature = 30 + Math.random() * 5; humidity = 50 + Math.random() * 15; sound_level = 85 + Math.random() * 15;
+            } else { // Normal conditions
+                temperature = 28 + Math.random() * 7; humidity = 60 + Math.random() * 20; sound_level = 40 + Math.random() * 10;
             }
             return {
-                temperature: parseFloat(temperature.toFixed(1)),
-                humidity: parseFloat(humidity.toFixed(1)),
-                sound_level: parseFloat(sound_level.toFixed(1)),
-                timestamp: new Date().toISOString()
+                temperature: parseFloat(temperature.toFixed(1)), humidity: parseFloat(humidity.toFixed(1)),
+                sound_level: parseFloat(sound_level.toFixed(1)), timestamp: new Date().toISOString()
             };
         }
 
-        async function runAILogicAndSave(sensorId, sensorInfo) {
-            const data = generateSensorData();
-            const fullData = { ...data, lat: sensorInfo.lat, lng: sensorInfo.lng, name: sensorInfo.name };
-            
-            await set(ref(db, 'sensors/' + sensorId), fullData);
-
-            if (fullData.temperature > 45 && fullData.humidity < 35) {
-                const alert = { sensorId, type: "fire", message: `Phát hiện nguy cơ CHÁY RỪNG tại ${sensorInfo.name}.`, details: `Nhiệt độ: ${fullData.temperature}°C, Độ ẩm: ${fullData.humidity}%`, confidence: 0.95, timestamp: new Date().toISOString(), lat: fullData.lat, lng: fullData.lng };
-                await push(ref(db, 'alerts'), alert);
+        // New incident manager for more realistic simulation
+        function manageIncidents() {
+            const now = Date.now();
+            if (activeIncident && now > activeIncident.endTime) {
+                console.log(`Sự cố đã kết thúc: ${activeIncident.type}`);
+                activeIncident = null;
             }
-            if (fullData.sound_level > 85) {
-                const alert = { sensorId, type: "noise", message: `Tiếng ồn lớn bất thường tại ${sensorInfo.name}.`, details: `Mức âm thanh: ${fullData.sound_level}dB, nghi ngờ cưa máy.`, confidence: 0.90, timestamp: new Date().toISOString(), lat: fullData.lat, lng: fullData.lng };
-                await push(ref(db, 'alerts'), alert);
+            if (!activeIncident) {
+                // Low chance to start a new incident every 20 seconds
+                if (Math.random() < 0.15) { // 15% chance
+                    const sensorIds = Object.keys(virtualSensors);
+                    const incidentType = Math.random() < 0.5 ? 'fire' : 'noise';
+                    const affectedCount = Math.floor(Math.random() * 3) + 1; // 1 to 3 sensors
+                    const affectedSensors = sensorIds.sort(() => 0.5 - Math.random()).slice(0, affectedCount);
+                    const duration = (Math.floor(Math.random() * 2) + 2) * 60 * 1000; // 2 to 3 minutes
+                    
+                    activeIncident = {
+                        type: incidentType, affectedSensors: affectedSensors,
+                        startTime: now, endTime: now + duration,
+                    };
+                    console.log(`Sự cố mới bắt đầu: ${activeIncident.type} trong ${duration / 1000}s, ảnh hưởng tới: ${activeIncident.affectedSensors.join(', ')}`);
+                }
             }
         }
-        
-        setInterval(() => {
+
+        // The main data pushing loop
+        async function updateAllSensors() {
             for (const sensorId in virtualSensors) {
-                runAILogicAndSave(sensorId, virtualSensors[sensorId]);
+                let incidentType = null;
+                if (activeIncident && activeIncident.affectedSensors.includes(sensorId)) {
+                    incidentType = activeIncident.type;
+                }
+                const data = generateSensorData(incidentType);
+                const fullData = { ...data, lat: virtualSensors[sensorId].lat, lng: virtualSensors[sensorId].lng, name: virtualSensors[sensorId].name };
+                
+                await set(ref(db, 'sensors/' + sensorId), fullData);
+
+                // Logic to push alerts is now also inside this loop, based on the incident
+                if (incidentType === 'fire') {
+                     const alert = { sensorId, type: "fire", message: `Phát hiện nguy cơ CHÁY RỪNG tại ${fullData.name}.`, details: `Nhiệt độ: ${fullData.temperature}°C, Độ ẩm: ${fullData.humidity}%`, confidence: 0.95, timestamp: new Date().toISOString(), lat: fullData.lat, lng: fullData.lng };
+                     await push(ref(db, `active_alerts/${sensorId}`), alert); // Use a different path to avoid re-triggering
+                }
+                if (incidentType === 'noise') {
+                    const alert = { sensorId, type: "noise", message: `Tiếng ồn lớn bất thường tại ${fullData.name}.`, details: `Mức âm thanh: ${fullData.sound_level}dB, nghi ngờ cưa máy.`, confidence: 0.90, timestamp: new Date().toISOString(), lat: fullData.lat, lng: fullData.lng };
+                    await push(ref(db, `active_alerts/${sensorId}`), alert);
+                }
+                 if (!incidentType) {
+                    // If sensor is not in an active incident, remove its active alert
+                    set(ref(db, `active_alerts/${sensorId}`), null);
+                }
             }
-        }, 8000);
+        }
+
+        setInterval(updateAllSensors, 8000); // Push sensor data regularly
+        setInterval(manageIncidents, 20000); // Manage incidents less frequently
 
         // === GIAI ĐOẠN 4: HIỂN THỊ DỮ LIỆU & CẢNH BÁO TỪ FIREBASE ===
         const sensorsRef = ref(db, 'sensors');
         onValue(sensorsRef, (snapshot) => {
             const sensorsData = snapshot.val();
             if (!sensorsData) return;
-            
             sensorListDiv.innerHTML = '';
-
             Object.entries(sensorsData).forEach(([sensorId, data]) => {
                 let status = 'normal', statusColor = 'text-green-600', icon = icons.normal;
-                if (data.temperature > 45 || data.sound_level > 85) {
-                    status = 'danger'; statusColor = 'text-red-600'; icon = icons.danger;
-                } else if (data.temperature > 38 || data.sound_level > 70) {
-                    status = 'warning'; statusColor = 'text-yellow-500'; icon = icons.warning;
-                }
-
+                if (data.temperature > 45 || data.sound_level > 85) { status = 'danger'; statusColor = 'text-red-600'; icon = icons.danger;
+                } else if (data.temperature > 38 || data.sound_level > 70) { status = 'warning'; statusColor = 'text-yellow-500'; icon = icons.warning; }
                 const sensorElement = document.createElement('div');
                 sensorElement.className = 'bg-gray-50 p-3 rounded-lg flex items-center justify-between border border-gray-200';
                 sensorElement.innerHTML = `<div><p class="font-semibold text-gray-700">${data.name}</p><p class="text-xs text-gray-500">T: ${data.temperature}°C, H: ${data.humidity}%, S: ${data.sound_level}dB</p></div><div class="flex items-center"><span class="text-sm font-medium mr-2 ${statusColor}">${status.charAt(0).toUpperCase() + status.slice(1)}</span><div class="w-3 h-3 rounded-full ${status === 'normal' ? 'bg-green-500' : status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}"></div></div>`;
                 sensorListDiv.appendChild(sensorElement);
-                
                 const popupContent = `<div class="text-base font-bold mb-2 text-gray-900">${data.name}</div><div class="text-sm"><b>Nhiệt độ:</b> ${data.temperature}°C</div><div class="text-sm"><b>Độ ẩm:</b> ${data.humidity}%</div><div class="text-sm"><b>Âm thanh:</b> ${data.sound_level} dB</div><div class="text-xs text-gray-400 mt-2"><i>Cập nhật: ${new Date(data.timestamp).toLocaleTimeString()}</i></div>`;
-
-                if (sensorMarkers[sensorId]) {
-                    sensorMarkers[sensorId].setLatLng([data.lat, data.lng]).setIcon(icon).setPopupContent(popupContent);
-                } else {
-                    sensorMarkers[sensorId] = L.marker([data.lat, data.lng], { icon: icon }).addTo(map).bindPopup(popupContent);
-                }
+                if (sensorMarkers[sensorId]) { sensorMarkers[sensorId].setLatLng([data.lat, data.lng]).setIcon(icon).setPopupContent(popupContent);
+                } else { sensorMarkers[sensorId] = L.marker([data.lat, data.lng], { icon: icon }).addTo(map).bindPopup(popupContent); }
             });
         });
 
-        const alertsRef = ref(db, 'alerts');
-        onChildAdded(alertsRef, (snapshot) => {
-            const alertData = snapshot.val();
-            const alertId = snapshot.key;
+        // === GEMINI API INTEGRATION & MODAL HANDLING ===
+        const geminiModal = document.getElementById('gemini-modal');
+        const modalContent = document.getElementById('modal-content');
+        const closeModalBtn = document.getElementById('close-modal-btn');
 
-            // Clear previous timer if a new alert comes in
-            if (returnToOverviewTimer) {
-                clearTimeout(returnToOverviewTimer);
+        async function getActionPlan(alertDetails) {
+            const { type, name, lat, lng, details } = alertDetails;
+            let prompt = "";
+            if (type === 'fire') {
+                prompt = `Bạn là một chuyên gia về kiểm lâm và ứng phó khẩn cấp tại Vườn Quốc gia Cúc Phương, Việt Nam. 
+                Một cảnh báo CHÁY RỪNG vừa được phát hiện.
+                - Vị trí: ${name} (Tọa độ: ${lat}, ${lng})
+                - Chi tiết: ${details}
+                Hãy tạo một kế hoạch hành động ngắn gọn, rõ ràng, và ưu tiên cho đội kiểm lâm. 
+                Sử dụng định dạng Markdown. Bao gồm các mục sau:
+                1.  **Đánh giá Tình hình (Ưu tiên số 1):** Các bước cần làm ngay để xác định mức độ nguy hiểm.
+                2.  **Huy động Lực lượng:** Cần bao nhiêu người, liên lạc với ai?
+                3.  **Trang thiết bị cần thiết:** Liệt kê các dụng cụ chữa cháy quan trọng.
+                4.  **Phương án Tiếp cận & An toàn:** Hướng di chuyển an toàn và các lưu ý an toàn cho đội.
+                Phản hồi bằng tiếng Việt.`;
+            } else if (type === 'noise') {
+                prompt = `Bạn là một chuyên gia về kiểm lâm và chống phá rừng tại Vườn Quốc gia Cúc Phương, Việt Nam. 
+                Một cảnh báo TIẾNG ỒN BẤT THƯỜNG (nghi ngờ cưa máy) vừa được phát hiện.
+                - Vị trí: ${name} (Tọa độ: ${lat}, ${lng})
+                - Chi tiết: ${details}
+                Hãy tạo một kế hoạch hành động thận trọng cho đội kiểm lâm tuần tra.
+                Sử dụng định dạng Markdown. Bao gồm các mục sau:
+                1.  **Chỉ dẫn Tiếp cận (Ưu tiên An toàn):** Cách tiếp cận vị trí một cách bí mật và an toàn.
+                2.  **Thu thập Bằng chứng:** Cần làm gì để ghi lại bằng chứng (hình ảnh, video, ghi âm) mà không bị phát hiện?
+                3.  **Phối hợp & Báo cáo:** Khi nào cần gọi hỗ trợ? Báo cáo cho ai?
+                4.  **Nguyên tắc Vàng:** Các quy tắc an toàn quan trọng nhất cho đội khi đối mặt với lâm tặc.
+                Phản hồi bằng tiếng Việt.`;
             }
+            if (!prompt) return "<p>Không thể tạo kế hoạch cho loại cảnh báo này.</p>";
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { throw new Error(`API Error: ${response.statusText}`); }
+                const result = await response.json();
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                    let text = result.candidates[0].content.parts[0].text;
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>');
+                    text = text.replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-red-600 px-1 rounded">$1</code>');
+                    text = text.replace(/\n/g, '<br>');
+                    return text;
+                } else { console.error("Unexpected API response structure:", result); return "<p>Đã xảy ra lỗi khi phân tích phản hồi từ AI.</p>"; }
+            } catch (error) { console.error("Error calling Gemini API:", error); return `<p>Không thể kết nối đến dịch vụ AI. <br><br>Chi tiết lỗi: ${error.message}</p>`; }
+        }
 
-            if(alertLogDiv.querySelector('.text-gray-500')) alertLogDiv.innerHTML = '';
-            
-            const isFire = alertData.type === 'fire';
-            const alertIcon = isFire ? icons.fire : icons.noise;
-            const iconHTML = isFire ? `<i data-lucide="flame" class="w-5 h-5 text-white"></i>` : `<i data-lucide="siren" class="w-5 h-5 text-white"></i>`;
-            const bgColor = isFire ? 'bg-red-500' : 'bg-yellow-400';
-            const borderColor = isFire ? 'border-red-500' : 'border-yellow-400';
-
-            const alertElement = document.createElement('div');
-            alertElement.className = `bg-white p-3 rounded-lg border-l-4 ${borderColor} shadow-sm`;
-            alertElement.innerHTML = `<div class="flex items-center mb-1"><div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center mr-3 flex-shrink-0">${iconHTML}</div><div class="flex-grow"><p class="font-bold text-gray-800">${alertData.message}</p><p class="text-sm text-gray-600">${alertData.details}</p></div></div><p class="text-xs text-gray-400 text-right">Vào lúc ${new Date(alertData.timestamp).toLocaleTimeString()}</p>`;
-            alertLogDiv.prepend(alertElement);
-
-            const popupContent = `<div class="text-lg font-bold ${isFire ? 'text-red-600' : 'text-yellow-500'} mb-2">🚨 CẢNH BÁO ${alertData.type.toUpperCase()} 🚨</div><div class="text-base text-gray-800">${alertData.message}</div><div class="text-sm text-gray-600">${alertData.details}</div><div class="text-xs text-gray-400 mt-2"><i>Thời gian: ${new Date(alertData.timestamp).toLocaleString()}</i></div>`;
-            
-            if (!alertMarkers[alertId]) {
-                 const alertMarker = L.marker([alertData.lat, alertData.lng], { icon: alertIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(popupContent).openPopup();
-                alertMarkers[alertId] = alertMarker;
-                
-                // UX Improvement: Fly to a reasonable zoom level
-                map.flyTo([alertData.lat, alertData.lng], alertZoom);
-
-                // UX Improvement: Set a timer to return to the default overview
-                returnToOverviewTimer = setTimeout(() => {
-                    map.flyTo(defaultCenter, defaultZoom);
-                }, 10000); // 10 seconds
-            }
-            
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
+        alertLogDiv.addEventListener('click', async (e) => {
+            const button = e.target.closest('.generate-plan-btn');
+            if (button) {
+                geminiModal.classList.remove('hidden');
+                modalContent.innerHTML = `<div class="flex justify-center items-center py-10"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div><p class="ml-4 text-gray-600">AI đang phân tích và tạo kế hoạch...</p></div>`;
+                if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+                const alertDetails = button.dataset;
+                const planHtml = await getActionPlan(alertDetails);
+                modalContent.innerHTML = planHtml;
             }
         });
+
+        closeModalBtn.addEventListener('click', () => { geminiModal.classList.add('hidden'); });
+        window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !geminiModal.classList.contains('hidden')) { geminiModal.classList.add('hidden'); } });
+
+        const alertsRef = ref(db, 'active_alerts');
+        onValue(alertsRef, (snapshot) => {
+            const allActiveAlerts = snapshot.val() || {};
+
+            // Clear previous UI alerts
+            alertLogDiv.innerHTML = '<p class="text-gray-500">Chưa có cảnh báo nào.</p>';
+            Object.values(alertMarkers).forEach(marker => marker.remove());
+            alertMarkers = {};
+            if (returnToOverviewTimer) { clearTimeout(returnToOverviewTimer); }
+
+            const activeAlertsList = Object.values(allActiveAlerts).flatMap(sensorAlerts => Object.values(sensorAlerts));
+            
+            if (activeAlertsList.length > 0) {
+                 if(alertLogDiv.querySelector('.text-gray-500')) alertLogDiv.innerHTML = '';
+                 // Get the latest alert to focus on
+                 const latestAlert = activeAlertsList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+                activeAlertsList.forEach(alertData => {
+                    const alertId = alertData.sensorId;
+                    const isFire = alertData.type === 'fire';
+                    const alertIcon = isFire ? icons.fire : icons.noise;
+                    const iconHTML = isFire ? `<i data-lucide="flame" class="w-5 h-5 text-white"></i>` : `<i data-lucide="siren" class="w-5 h-5 text-white"></i>`;
+                    const bgColor = isFire ? 'bg-red-500' : 'bg-yellow-400';
+                    const borderColor = isFire ? 'border-red-500' : 'border-yellow-400';
+
+                    const alertElement = document.createElement('div');
+                    alertElement.className = `bg-white p-3 rounded-lg border-l-4 ${borderColor} shadow-sm`;
+                    alertElement.innerHTML = `<div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center mr-3 flex-shrink-0">${iconHTML}</div><div class="flex-grow"><p class="font-bold text-gray-800">${alertData.message}</p><p class="text-sm text-gray-600">${alertData.details}</p></div></div><div class="flex justify-between items-center mt-2"><p class="text-xs text-gray-400">Vào lúc ${new Date(alertData.timestamp).toLocaleTimeString()}</p><button class="generate-plan-btn text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-full flex items-center transition-colors" data-type="${alertData.type}" data-name="${alertData.message.split('tại ')[1] || 'Vị trí không xác định'}" data-lat="${alertData.lat}" data-lng="${alertData.lng}" data-details="${alertData.details}"><i data-lucide="sparkles" class="w-4 h-4 mr-1"></i>Gợi ý Hành động</button></div>`;
+                    alertLogDiv.prepend(alertElement);
+
+                    const popupContent = `<div class="text-lg font-bold ${isFire ? 'text-red-600' : 'text-yellow-500'} mb-2">🚨 CẢNH BÁO ${alertData.type.toUpperCase()} 🚨</div><div class="text-base text-gray-800">${alertData.message}</div><div class="text-sm text-gray-600">${alertData.details}</div><div class="text-xs text-gray-400 mt-2"><i>Thời gian: ${new Date(alertData.timestamp).toLocaleString()}</i></div>`;
+                    
+                    if (!alertMarkers[alertId]) {
+                        const alertMarker = L.marker([alertData.lat, alertData.lng], { icon: alertIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(popupContent);
+                        alertMarkers[alertId] = alertMarker;
+                    }
+                });
+
+                // Fly to the latest alert
+                map.flyTo([latestAlert.lat, latestAlert.lng], alertZoom);
+                 alertMarkers[latestAlert.sensorId].openPopup();
+                returnToOverviewTimer = setTimeout(() => {
+                    map.flyTo(defaultCenter, defaultZoom);
+                }, 10000); 
+            }
+            
+            if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+        });
         
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
+        if (typeof lucide !== 'undefined') { lucide.createIcons(); }
     </script>
 
 </body>
