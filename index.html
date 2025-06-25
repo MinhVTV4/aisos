@@ -262,7 +262,6 @@
                 sensorElement.innerHTML = `<div><p class="font-semibold text-gray-700">${data.name}</p><p class="text-xs text-gray-500">T: ${data.temperature}°C, H: ${data.humidity}%, S: ${data.sound_level}dB</p></div><div class="flex items-center"><span class="text-sm font-medium mr-2 ${statusColor}">${status.charAt(0).toUpperCase() + status.slice(1)}</span><div class="w-3 h-3 rounded-full ${status === 'normal' ? 'bg-green-500' : status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}"></div></div>`;
                 sensorListDiv.appendChild(sensorElement);
                 
-                // NEW: Added "Find Route" button to the sensor popup
                 const popupContent = `
                     <div class="text-base font-bold mb-2 text-gray-900">${data.name}</div>
                     <div class="text-sm"><b>Nhiệt độ:</b> ${data.temperature}°C</div>
@@ -285,7 +284,6 @@
         function findAndDrawRoute(destinationLatLng) {
             let closestStation = null;
             let minDistance = Infinity;
-
             Object.values(rangerStations).forEach(station => {
                 const stationLatLng = L.latLng(station.lat, station.lng);
                 const distance = destinationLatLng.distanceTo(stationLatLng);
@@ -294,11 +292,8 @@
                     closestStation = station;
                 }
             });
-
             if (closestStation) {
-                if (routingControl) {
-                    map.removeControl(routingControl);
-                }
+                if (routingControl) { map.removeControl(routingControl); }
                 routingControl = L.Routing.control({
                     waypoints: [ L.latLng(closestStation.lat, closestStation.lng), destinationLatLng ],
                     routeWhileDragging: false, show: false, addWaypoints: false,
@@ -320,7 +315,6 @@
             }
         });
 
-        // NEW: Event listener for route buttons inside popups
         map.getContainer().addEventListener('click', function(e) {
             const button = e.target.closest('.sensor-route-btn');
             if (button) {
@@ -332,7 +326,6 @@
             }
         });
 
-        // Call lucide.createIcons whenever a popup is opened
         map.on('popupopen', function() {
             if (typeof lucide !== 'undefined') { lucide.createIcons(); }
         });
@@ -385,6 +378,9 @@
 
         alertLogDiv.addEventListener('click', (e) => {
             const planButton = e.target.closest('.generate-plan-btn');
+            const routeButton = e.target.closest('.find-route-btn');
+            const dismissButton = e.target.closest('.dismiss-alert-btn');
+
             if (planButton) {
                 const alertDetails = planButton.dataset;
                 let prompt = "";
@@ -397,12 +393,18 @@
                 if (prompt) { showModal(title, callGemini(prompt)); }
             }
 
-            const routeButton = e.target.closest('.find-route-btn');
             if (routeButton) {
                  const lat = parseFloat(routeButton.dataset.lat);
                 const lng = parseFloat(routeButton.dataset.lng);
                 if (!isNaN(lat) && !isNaN(lng)) {
                     findAndDrawRoute(L.latLng(lat, lng));
+                }
+            }
+
+            if (dismissButton) {
+                const sensorId = dismissButton.dataset.sensorId;
+                if (sensorId) {
+                    set(ref(db, `active_alerts/${sensorId}`), null);
                 }
             }
         });
@@ -434,8 +436,11 @@
                     const alertElement = document.createElement('div');
                     alertElement.className = `bg-white p-3 rounded-lg border-l-4 ${borderColor} shadow-sm`;
                     const locationName = alertData.message.split('tại ')[1] || 'Vị trí không xác định';
-                    alertElement.innerHTML = `<div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center mr-3 flex-shrink-0">${iconHTML}</div><div class="flex-grow"><p class="font-bold text-gray-800">${alertData.message}</p><p class="text-sm text-gray-600">${alertData.details}</p></div></div><div class="flex justify-between items-center mt-2"><p class="text-xs text-gray-400">Vào lúc ${new Date(alertData.timestamp).toLocaleTimeString()}</p><div class="flex gap-2"><button class="find-route-btn text-xs font-semibold text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-full flex items-center transition-colors" data-lat="${alertData.lat}" data-lng="${alertData.lng}"><i data-lucide="map-pinned" class="w-4 h-4 mr-1"></i>Chỉ đường</button><button class="generate-plan-btn text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-full flex items-center transition-colors" data-type="${alertData.type}" data-name="${locationName}" data-lat="${alertData.lat}" data-lng="${alertData.lng}" data-details="${alertData.details}"><i data-lucide="sparkles" class="w-4 h-4 mr-1"></i>Gợi ý</button></div></div>`;
+                    
+                    // NEW: Added Dismiss Button
+                    alertElement.innerHTML = `<div class="flex items-center mb-2"><div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center mr-3 flex-shrink-0">${iconHTML}</div><div class="flex-grow"><p class="font-bold text-gray-800">${alertData.message}</p><p class="text-sm text-gray-600">${alertData.details}</p></div></div><div class="flex justify-between items-center mt-2"><p class="text-xs text-gray-400">Vào lúc ${new Date(alertData.timestamp).toLocaleTimeString()}</p><div class="flex gap-2"><button class="dismiss-alert-btn text-xs font-semibold text-red-600 hover:text-red-800 bg-red-100 hover:bg-red-200 px-3 py-1 rounded-full flex items-center transition-colors" data-sensor-id="${alertData.sensorId}"><i data-lucide="bell-off" class="w-4 h-4 mr-1"></i>Tắt</button><button class="find-route-btn text-xs font-semibold text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-full flex items-center transition-colors" data-lat="${alertData.lat}" data-lng="${alertData.lng}"><i data-lucide="map-pinned" class="w-4 h-4 mr-1"></i>Chỉ đường</button><button class="generate-plan-btn text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-full flex items-center transition-colors" data-type="${alertData.type}" data-name="${locationName}" data-lat="${alertData.lat}" data-lng="${alertData.lng}" data-details="${alertData.details}"><i data-lucide="sparkles" class="w-4 h-4 mr-1"></i>Gợi ý</button></div></div>`;
                     alertLogDiv.prepend(alertElement);
+
                     const popupContent = `<div class="text-lg font-bold ${isFire ? 'text-red-600' : 'text-yellow-500'} mb-2">🚨 CẢNH BÁO ${alertData.type.toUpperCase()} 🚨</div><div class="text-base text-gray-800">${alertData.message}</div><div class="text-sm text-gray-600">${alertData.details}</div><div class="text-xs text-gray-400 mt-2"><i>Thời gian: ${new Date(alertData.timestamp).toLocaleString()}</i></div>`;
                     if (!alertMarkers[alertId]) {
                         const alertMarker = L.marker([alertData.lat, alertData.lng], { icon: alertIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(popupContent);
